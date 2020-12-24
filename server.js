@@ -6,13 +6,16 @@ const path = require('path');
 const axios = require('axios');
 const {execFile} = require('child_process');
 
-const baseURL = "http://localhost:8080"
+const baseURL = "https://render-vyiztljbvq-el.a.run.app"
+// const baseURL = "http://localhost:8080"
 
 app.use(express.static(__dirname));
 app.use(express.static(path.join(__dirname, 'build')));
 
-app.get('/render/:email/:id', function (req, res) {
+app.get('/render/:email/:id', async function (req, res) {
     const {email, id} = req.params;
+    const r = Math.floor(Math.random() * 100)
+
     const startRecord = async () => {
         console.log("preparing")
         const data = await axios.get(`https://quantavid-vyiztljbvq-el.a.run.app/api/videos/${email}/video/${id}`);
@@ -22,6 +25,7 @@ app.get('/render/:email/:id', function (req, res) {
         const browser = await puppeteer.launch({
             // headless: false,
             executablePath: "/usr/bin/google-chrome-stable",
+            args: ['--no-sandbox']
         });
         const page = await browser.newPage();
         await page.setViewport({height: 576, width: 1024})
@@ -33,13 +37,7 @@ app.get('/render/:email/:id', function (req, res) {
         let ffmpegPath = 'ffmpeg';
         let fps = 30;
 
-        const r = Math.floor(Math.random() * 100)
         let outFile = path.join(__dirname, 'dom' + r + '.avi')
-
-
-        //////
-        res.end(`Check ${baseURL}/${'dom' + r + '.avi'} after ${data.data.slides.length * 5 * 6}seconds`);
-        //////
 
         const args = ffmpegArgsY(fps);
 
@@ -81,8 +79,8 @@ app.get('/render/:email/:id', function (req, res) {
         await browser.close();
         console.log("generated", `dom${r}.avi of duration ${duration}s and fps ${fps} in ${(Date.now() - prev) / 1000}s with ${(Date.now() - prev) / ++i}ms per frame`);
     };
-    startRecord();
-    // res.end("starting recording");
+    await startRecord();
+    res.end(`Check ${baseURL}/${'dom' + r + '.avi'}`);
 })
 
 app.get("/api/videos/:email/video/:id", (req, res) => {
@@ -96,7 +94,8 @@ app.get('/*', function (req, res) {
     res.sendFile(path.join(__dirname, 'build/index.html'));
 });
 
-app.listen(port, () => console.log("Server started on port 8080"));
+var server = app.listen(port, () => console.log("Server started on port 8080"));
+server.setTimeout(500000);
 
 const ffmpegArgsY = fps => [
     '-y',
